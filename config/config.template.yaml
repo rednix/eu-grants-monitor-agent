@@ -1,0 +1,105 @@
+# EU Grants Monitor Agent Configuration Template
+# Copy this file to config.yaml and customize for your needs
+
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  format: "<green>{time}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+  file: logs/grants_monitor.log
+  rotation: 10 MB
+  retention: 30 days
+
+# Web scraper configurations
+scrapers:
+  horizon_europe:
+    enabled: true
+    base_url: https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/calls-for-proposals
+    rate_limit:
+      requests_per_minute: 30
+      delay_between_requests: 2
+  
+  digital_europe:
+    enabled: false
+    base_url: https://digital-strategy.ec.europa.eu/en/activities/digital-programme
+  
+  # Add more EU funding portals as needed
+  # erdf:
+  #   enabled: false
+  #   base_url: https://cohesiondata.ec.europa.eu/
+
+# Opportunity analysis settings
+analysis:
+  keywords_weights:
+    artificial_intelligence: 10
+    machine_learning: 8
+    deep_learning: 8
+    nlp: 7
+    natural_language_processing: 7
+    computer_vision: 7
+    data_science: 6
+    automation: 5
+    robotics: 6
+    cloud_computing: 4
+    blockchain: 3
+
+# Profile matching configuration
+matching:
+  country_bonus: 10          # Bonus points for matching country
+  size_match_bonus: 15       # Bonus for matching company size
+  expertise_match_weight: 0.4 # Weight for AI expertise matching
+  industry_match_weight: 0.3  # Weight for industry matching
+  funding_range_weight: 0.3   # Weight for funding amount fit
+
+# Overall scoring weights
+scoring:
+  weights:
+    relevance: 0.4    # How well the grant matches your profile
+    complexity: 0.3   # Application complexity (lower is better)
+    amount: 0.2       # Funding amount
+    deadline: 0.1     # Time until deadline
+
+# Alert settings
+alerts:
+  priority_threshold: 70        # Minimum priority score for alerts
+  check_interval_hours: 6       # How often to check for new grants
+  deadline_warning_days: [30, 14, 7, 3, 1]  # Days before deadline to send reminders
+
+# Notification settings
+notifications:
+  email:
+    enabled: true
+    smtp_server: smtp.gmail.com
+    smtp_port: 587
+    username: your-email@gmail.com
+    password: your-app-password  # Use app password, not regular password
+    from_address: your-email@gmail.com
+    to_addresses:
+      - recipient@example.com
+  
+  slack:
+    enabled: false
+    webhook_url: your-slack-webhook-url
+  
+  discord:
+    enabled: false
+    webhook_url: your-discord-webhook-url
+
+# Database configuration
+database:
+  type: sqlite  # sqlite or postgresql
+  
+  sqlite:
+    path: data/grants.db
+  
+  postgresql:
+    host: localhost
+    port: 5432
+    database: grants_monitor
+    username: grants_user
+    password: your-db-password
+
+# Advanced settings
+advanced:
+  max_concurrent_scrapers: 3
+  request_timeout_seconds: 30
+  retry_attempts: 3
+  cache_duration_hours: 24

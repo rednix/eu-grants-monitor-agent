@@ -1,0 +1,115 @@
+# Business Profile Template
+# Copy this file to business_profile.yaml and customize with your company details
+
+# Company Information
+company_name: "Your AI Consultancy Name"
+company_size: small  # micro (1-9 employees), small (10-49), medium (50-249)
+country: DE  # ISO 2-letter country code (DE, FR, IT, ES, NL, etc.)
+
+# AI and Technology Expertise
+# List your main areas of AI expertise
+ai_expertise:
+  - machine_learning
+  - natural_language_processing
+  - computer_vision
+  - deep_learning
+  - data_analytics
+  - predictive_modeling
+  # - robotics
+  # - reinforcement_learning
+  # - speech_recognition
+  # - recommendation_systems
+
+# Technology Stack and Focus Areas
+technology_focus:
+  - python
+  - tensorflow
+  - pytorch
+  - scikit_learn
+  - pandas
+  - cloud_computing
+  - aws
+  # - azure
+  # - google_cloud
+  # - docker
+  # - kubernetes
+  # - spark
+  # - hadoop
+
+# Target Industries
+# Industries you want to work in or have experience with
+target_industries:
+  - healthcare
+  - finance
+  - manufacturing
+  - retail
+  - logistics
+  # - automotive
+  # - energy
+  # - telecommunications
+  # - agriculture
+  # - education
+  # - government
+
+# Business Sectors and Services
+business_sectors:
+  - consulting
+  - software_development
+  - research_development
+  - training
+  # - data_analysis
+  # - system_integration
+  # - product_development
+
+# Funding Preferences
+preferred_funding_range:
+  min: 50000      # Minimum funding amount you're interested in (EUR)
+  max: 500000     # Maximum funding amount you can handle
+
+# Project Capabilities
+max_project_duration_months: 24  # Maximum project duration you can commit to
+team_size: 5                     # Number of team members available for projects
+
+# Application Preferences
+complexity_preference: simple  # simple, medium, complex
+# simple: Minimal paperwork, straightforward applications
+# medium: Moderate requirements, some reporting
+# complex: Extensive documentation, consortium requirements
+
+# Geographic Preferences (optional)
+# Uncomment and customize if you have specific geographic preferences
+# preferred_countries:
+#   - DE
+#   - FR
+#   - NL
+#   - AT
+
+# Additional Keywords to Monitor
+# Add specific terms related to your niche or specialization
+additional_keywords:
+  - digital_transformation
+  - industry_40
+  - smart_manufacturing
+  - predictive_maintenance
+  # - iot
+  # - edge_computing
+  # - federated_learning
+  # - explainable_ai
+
+# Exclusion Criteria (optional)
+# Grant types or requirements to avoid
+exclusions:
+  - minimum_consortium_size_above: 5  # Avoid grants requiring large consortiums
+  - exclude_keywords:
+    - defense
+    - military
+    - weapons
+  # - avoid_countries:
+  #   - XX
+
+# Notification Preferences
+alert_preferences:
+  immediate_alert_threshold: 85  # Priority score for immediate notifications
+  daily_digest: true            # Receive daily summary of new opportunities
+  weekly_report: true           # Receive weekly analysis report
+  deadline_reminders: true      # Get reminded about approaching deadlines
