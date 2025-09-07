@@ -38,6 +38,7 @@ class Grant(BaseModel):
     id: str = Field(..., description="Unique grant identifier")
     title: str = Field(..., description="Grant title")
     description: str = Field(..., description="Grant description")
+    synopsis: str = Field(..., description="Brief synopsis of grant focus")
     program: FundingProgram = Field(..., description="Funding program")
     
     # Financial details

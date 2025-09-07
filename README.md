@@ -13,7 +13,9 @@ This agent automatically scans, filters, and alerts on relevant EU funding oppor
 - **Business Profile Matching**: Matches opportunities to your specific consultancy capabilities
 - **Complexity Assessment**: Prioritizes grants with simpler application processes
 - **Real-time Alerts**: Notifies you of new opportunities and upcoming deadlines
-- **Application Assistance**: Provides guidance on application requirements and strategies
+- **Complete Application Generation**: End-to-end document generation with interactive assistance
+- **Masumi Integration**: Decentralized AI agent accessible via Cardano blockchain payments
+- **API Services**: FastAPI endpoints for programmatic access to all capabilities
 
 ## 📊 Data Sources
 
@@ -167,6 +169,29 @@ python -m grants_monitor alerts add --profile sme_ai_consultancy --notify email
 ```bash
 python -m grants_monitor assist --grant-id HE-2024-AI-SME-001
 ```
+
+### Masumi Integration (Decentralized AI Agent)
+
+The agent can be deployed as a Masumi-integrated service, accessible via Cardano payments:
+
+```bash
+# Start the API server for Masumi integration
+python -m grants_monitor serve-api --port 8000
+
+# Register with Masumi registry (requires API key)
+python -m grants_monitor register-masumi \
+  --api-key YOUR_MASUMI_API_KEY \
+  --api-url https://your-domain.com \
+  --environment production \
+  --network Mainnet
+
+# Check registration status
+python -m grants_monitor check-masumi-status \
+  --api-key YOUR_MASUMI_API_KEY \
+  --wallet-vkey YOUR_WALLET_VKEY
+```
+
+See [MASUMI_INTEGRATION.md](docs/MASUMI_INTEGRATION.md) for complete integration guide.
 
 ## 🧪 Testing
 

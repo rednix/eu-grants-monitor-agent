@@ -5,17 +5,16 @@ This module contains the main agent class and CLI interface.
 """
 
 import asyncio
-import sys
+from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import click
 from loguru import logger
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
-
-# Masumi imports (placeholder - adjust based on actual Masumi API)
-# from masumi import Agent, AgentConfig
+from rich.text import Text
 
 from .utils.config import ConfigManager
 from .utils.logger import setup_logging
@@ -24,6 +23,8 @@ from .scrapers.horizon_scraper import HorizonScraper
 from .analyzers.opportunity_analyzer import OpportunityAnalyzer
 from .matchers.profile_matcher import ProfileMatcher
 from .notifiers.email_notifier import EmailNotifier
+from .assistants.application_assistant import ApplicationAssistant
+from .data.mock_grants import get_grant_by_id, get_mock_grants
 
 console = Console()
 
@@ -48,6 +49,7 @@ class GrantsMonitorAgent:
         self.analyzer = OpportunityAnalyzer(self.config.get('analysis', {}))
         self.matcher = ProfileMatcher(self.config.get('matching', {}))
         self.notifier = EmailNotifier(self.config.get('notifications', {}))
+        self.assistant = ApplicationAssistant(self.config.get('assistance', {}))
         
         # Load business profile
         self.business_profile = self._load_business_profile()
@@ -232,6 +234,150 @@ def run(ctx: click.Context, continuous: bool) -> None:
 
 
 @cli.command()
+@click.option('--port', '-p', default=8000, help='Port to run the API server on')
+@click.option('--host', default='0.0.0.0', help='Host to bind the API server to')
+@click.pass_context
+def serve_api(ctx: click.Context, port: int, host: str) -> None:
+    """Start the agent API server for Masumi integration."""
+    console.print("🌐 Starting EU Grants Monitor API server...", style="bold blue")
+    console.print(f"Server will be available at: http://{host}:{port}")
+    
+    from .api import app
+    import uvicorn
+    
+    uvicorn.run(app, host=host, port=port)
+
+
+@cli.command()
+@click.option('--api-key', required=True, help='Masumi payment API key')
+@click.option('--api-url', required=True, help='Base URL where the agent API is hosted')
+@click.option('--network', type=click.Choice(['Preprod', 'Mainnet']), default='Preprod', help='Cardano network')
+@click.option('--environment', type=click.Choice(['development', 'staging', 'production']), default='development', help='Environment')
+@click.option('--dry-run', is_flag=True, help='Show configuration without registering')
+@click.pass_context
+def register_masumi(ctx: click.Context, api_key: str, api_url: str, network: str, environment: str, dry_run: bool) -> None:
+    """Register this agent with the Masumi registry."""
+    console.print("🔗 Registering EU Grants Monitor with Masumi...", style="bold blue")
+    
+    from .masumi_agent import EUGrantsMonitorMasumiAgent, create_masumi_config, get_default_agent_config
+    
+    async def register():
+        try:
+            # Get configuration
+            example_configs = {
+                "development": {
+                    "name": "eu-grants-monitor-dev",
+                    "pricing_quantity": "1000000",  # 1 ADA
+                    "capability_version": "1.0.0-dev"
+                },
+                "staging": {
+                    "name": "eu-grants-monitor-staging", 
+                    "pricing_quantity": "1500000",  # 1.5 ADA
+                    "capability_version": "1.0.0-beta"
+                },
+                "production": {
+                    "name": "eu-grants-monitor",
+                    "pricing_quantity": "2000000",  # 2 ADA
+                    "capability_version": "1.0.0"
+                }
+            }
+            
+            custom_config = example_configs.get(environment, {})
+            custom_config["api_base_url"] = api_url
+            
+            if dry_run:
+                base_config = get_default_agent_config(api_url)
+                base_config.update(custom_config)
+                
+                console.print("\n🔍 Agent Configuration:", style="bold")
+                for key, value in base_config.items():
+                    console.print(f"  {key}: {value}")
+                console.print(f"\n  Network: {network}")
+                console.print(f"  Environment: {environment}")
+                return
+            
+            # Create Masumi configuration
+            masumi_config = create_masumi_config(
+                payment_api_key=api_key,
+                payment_service_url="https://api.masumi.io"
+            )
+            
+            # Get agent configuration
+            agent_config = get_default_agent_config(api_url)
+            agent_config.update(custom_config)
+            
+            # Create and register agent
+            masumi_agent = EUGrantsMonitorMasumiAgent()
+            masumi_agent.create_masumi_agent(
+                masumi_config=masumi_config,
+                agent_config=agent_config,
+                network=network
+            )
+            
+            result = await masumi_agent.register_with_masumi()
+            
+            console.print("\n✅ Registration Complete!", style="bold green")
+            console.print(f"Agent Name: {agent_config['name']}")
+            console.print(f"Network: {network}")
+            console.print(f"API URL: {api_url}")
+            console.print(f"Environment: {environment}")
+            
+        except Exception as e:
+            console.print(f"\n❌ Registration failed: {e}", style="bold red")
+            raise
+    
+    asyncio.run(register())
+
+
+@cli.command()
+@click.option('--api-key', required=True, help='Masumi payment API key')
+@click.option('--wallet-vkey', required=True, help='Wallet verification key')
+@click.option('--network', type=click.Choice(['Preprod', 'Mainnet']), default='Preprod', help='Cardano network')
+@click.pass_context
+def check_masumi_status(ctx: click.Context, api_key: str, wallet_vkey: str, network: str) -> None:
+    """Check registration status with Masumi registry."""
+    console.print("📊 Checking Masumi registration status...", style="bold blue")
+    
+    from .masumi_agent import EUGrantsMonitorMasumiAgent, create_masumi_config, get_default_agent_config
+    
+    async def check_status():
+        try:
+            masumi_config = create_masumi_config(
+                payment_api_key=api_key,
+                payment_service_url="https://api.masumi.io"
+            )
+            
+            masumi_agent = EUGrantsMonitorMasumiAgent()
+            agent_config = get_default_agent_config("http://localhost:8000")
+            masumi_agent.create_masumi_agent(
+                masumi_config=masumi_config,
+                agent_config=agent_config,
+                network=network
+            )
+            
+            status = await masumi_agent.check_registration_status(wallet_vkey)
+            
+            console.print("\n📊 Registration Status:", style="bold")
+            if 'data' in status and 'Assets' in status['data']:
+                assets = status['data']['Assets']
+                if assets:
+                    for asset in assets:
+                        console.print(f"  Agent: {asset.get('name', 'Unknown')}")
+                        console.print(f"  Status: {asset.get('status', 'Unknown')}")
+                        console.print(f"  Network: {network}")
+                else:
+                    console.print("  No registered agents found", style="yellow")
+            else:
+                console.print(f"  Raw status: {status}")
+                
+        except Exception as e:
+            console.print(f"\n❌ Status check failed: {e}", style="bold red")
+            raise
+    
+    asyncio.run(check_status())
+
+
+@cli.command()
 @click.option('--filter', '-f', help='Filter by keywords')
 @click.option('--complexity', help='Filter by complexity (simple, medium, complex)')
 @click.option('--amount', help='Filter by funding amount range (e.g., 50000-500000)')
@@ -241,38 +387,212 @@ def list(ctx: click.Context, filter: Optional[str], complexity: Optional[str],
     """List available grant opportunities."""
     console.print("📋 Listing grant opportunities...", style="bold blue")
     
-    # This would fetch from database in real implementation
-    # For now, show a sample table
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("ID", style="dim")
-    table.add_column("Title")
-    table.add_column("Program")
-    table.add_column("Amount", justify="right")
-    table.add_column("Deadline")
-    table.add_column("Priority", justify="right")
+    # Get mock grants
+    grants = get_mock_grants()
     
-    # Sample data
-    table.add_row(
-        "HE-2024-AI-001",
-        "AI for Healthcare SMEs",
-        "Horizon Europe",
-        "€250,000",
-        "2024-03-15",
-        "85%"
-    )
+    # Apply filters
+    if filter:
+        from .data.mock_grants import get_grants_by_keyword
+        grants = get_grants_by_keyword(filter)
+        console.print(f"Filtering by keyword: {filter}")
+    
+    if complexity:
+        # This would be implemented with actual complexity scoring
+        console.print(f"Complexity filter: {complexity} (not yet implemented)")
+    
+    if amount:
+        # Parse amount range and filter
+        try:
+            if '-' in amount:
+                min_amt, max_amt = map(int, amount.split('-'))
+                grants = [g for g in grants if min_amt <= g.funding_amount <= max_amt]
+                console.print(f"Filtering by amount: €{min_amt:,} - €{max_amt:,}")
+        except ValueError:
+            console.print(f"Invalid amount format: {amount}", style="red")
+    
+    # Create and populate table
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("ID", style="dim", no_wrap=True, width=18)
+    table.add_column("Title", style="cyan", width=25)
+    table.add_column("Synopsis", style="white", width=35)
+    table.add_column("Program", style="yellow", width=15)
+    table.add_column("Amount", justify="right", style="green", width=12)
+    table.add_column("Deadline", style="red", width=12)
+    table.add_column("Days", justify="right", style="white", width=5)
+    
+    for grant in grants:
+        days_left = (grant.deadline - date.today()).days
+        days_color = "red" if days_left < 30 else "yellow" if days_left < 60 else "green"
+        
+        table.add_row(
+            grant.id,
+            grant.title[:23] + ("..." if len(grant.title) > 23 else ""),
+            grant.synopsis[:33] + ("..." if len(grant.synopsis) > 33 else ""),
+            grant.program.value.replace('_', ' ').title(),
+            f"€{grant.funding_amount:,.0f}",
+            grant.deadline.strftime("%Y-%m-%d"),
+            f"[{days_color}]{days_left}[/]"
+        )
     
     console.print(table)
+    console.print(f"\nFound {len(grants)} grant opportunities")
+    
+    if grants:
+        console.print("\n💡 Tips:")
+        console.print("  • Use 'grants-monitor show <GRANT_ID>' to see full details and URL")
+        console.print("  • Use 'grants-monitor assist <GRANT_ID>' to get application guidance!")
 
 
 @cli.command()
 @click.argument('grant_id')
 @click.pass_context
-def assist(ctx: click.Context, grant_id: str) -> None:
+def show(ctx: click.Context, grant_id: str) -> None:
+    """Show detailed information about a specific grant."""
+    try:
+        grant = get_grant_by_id(grant_id)
+    except ValueError as e:
+        console.print(f"❌ Error: {e}", style="bold red")
+        console.print("\n📋 Available grants:")
+        for g in get_mock_grants():
+            console.print(f"  • {g.id}: {g.title}")
+        return
+    
+    # Display detailed grant information
+    console.print(Panel(
+        f"📜 Grant Details: {grant.id}",
+        style="bold blue"
+    ))
+    
+    # Basic information
+    info_text = f"**Title:** {grant.title}\n"
+    info_text += f"**Program:** {grant.program.value.replace('_', ' ').title()}\n"
+    info_text += f"**Synopsis:** {grant.synopsis}\n"
+    info_text += f"**Funding Amount:** €{grant.funding_amount:,.0f}\n"
+    if grant.min_funding and grant.max_funding:
+        info_text += f"**Funding Range:** €{grant.min_funding:,.0f} - €{grant.max_funding:,.0f}\n"
+    info_text += f"**Deadline:** {grant.deadline.strftime('%Y-%m-%d')} ({(grant.deadline - date.today()).days} days left)\n"
+    info_text += f"**Project Duration:** {grant.start_date.strftime('%Y-%m-%d')} to {grant.end_date.strftime('%Y-%m-%d')}\n"
+    info_text += f"**Official URL:** {grant.url}\n"
+    if grant.documents_url:
+        info_text += f"**Documents URL:** {grant.documents_url}\n"
+    
+    console.print(Panel(info_text, title="Basic Information"))
+    
+    # Description
+    console.print(Panel(grant.description, title="Description"))
+    
+    # Eligibility and targets
+    if grant.eligible_countries:
+        countries_text = ", ".join(grant.eligible_countries)
+        console.print(Panel(f"**Eligible Countries:** {countries_text}", title="Eligibility"))
+    
+    if grant.target_organizations:
+        orgs_text = ", ".join(grant.target_organizations)
+        console.print(Panel(f"**Target Organizations:** {orgs_text}", title="Target Audience"))
+    
+    # Keywords
+    if grant.keywords:
+        keywords_text = ", ".join(grant.keywords)
+        console.print(Panel(keywords_text, title="Keywords & Topics"))
+    
+    console.print("\n💡 Use 'grants-monitor assist {}' for application guidance!".format(grant.id))
+
+
+@cli.command()
+@click.argument('grant_id')
+@click.option('--interactive/--no-interactive', default=True, help='Enable/disable interactive prompts')
+@click.pass_context
+def generate(ctx: click.Context, grant_id: str, interactive: bool) -> None:
+    """Generate complete, ready-to-submit application documents."""
+    console.print(f"🚀 Generating complete application for grant {grant_id}...", style="bold blue")
+    
+    try:
+        # Initialize the agent
+        agent = GrantsMonitorAgent(ctx.obj['config_path'])
+        
+        # Get the grant data
+        try:
+            grant = get_grant_by_id(grant_id)
+        except ValueError as e:
+            console.print(f"❌ Error: {e}", style="bold red")
+            console.print("\n📋 Available grants:")
+            for g in get_mock_grants():
+                console.print(f"  • {g.id}: {g.title}")
+            return
+        
+        # Generate complete application
+        async def generate_application():
+            return await agent.assistant.generate_complete_application(
+                grant, agent.business_profile, interactive=interactive
+            )
+        
+        result = asyncio.run(generate_application())
+        
+        console.print("\n✅ [bold green]Application generation completed successfully![/bold green]")
+        
+    except Exception as e:
+        logger.error(f"Error generating application: {e}")
+        console.print(f"❌ Error generating application: {e}", style="bold red")
+
+
+@cli.command()
+@click.argument('grant_id')
+@click.option('--save', '-s', help='Save guidance to file', type=click.Path())
+@click.pass_context
+def assist(ctx: click.Context, grant_id: str, save: Optional[str]) -> None:
     """Generate application assistance for a specific grant."""
     console.print(f"🤖 Generating assistance for grant {grant_id}...", style="bold blue")
     
-    # This would provide detailed application guidance
-    console.print("Application assistance feature coming soon!", style="yellow")
+    try:
+        # Initialize the agent to load configuration
+        agent = GrantsMonitorAgent(ctx.obj['config_path'])
+        
+        # Get the grant data
+        try:
+            grant = get_grant_by_id(grant_id)
+        except ValueError as e:
+            console.print(f"❌ Error: {e}", style="bold red")
+            console.print("\n📋 Available grants:")
+            for g in get_mock_grants():
+                console.print(f"  • {g.id}: {g.title}")
+            return
+        
+        # Generate assistance
+        async def generate_guidance():
+            return await agent.assistant.generate_assistance(grant, agent.business_profile)
+        
+        guidance = asyncio.run(generate_guidance())
+        
+        # Display the guidance
+        agent.assistant.display_guidance(guidance)
+        
+        # Save to file if requested
+        if save:
+            import json
+            from dataclasses import asdict
+            
+            guidance_data = {
+                'grant_id': guidance.grant_id,
+                'match_score': guidance.match_score,
+                'strengths': guidance.strengths,
+                'gaps': guidance.gaps,
+                'recommendations': guidance.recommendations,
+                'timeline': guidance.timeline,
+                'required_documents': guidance.required_documents,
+                'estimated_effort': guidance.estimated_effort,
+                'success_probability': guidance.success_probability,
+                'strategic_advice': guidance.strategic_advice,
+                'generated_at': datetime.now().isoformat()
+            }
+            
+            with open(save, 'w') as f:
+                json.dump(guidance_data, f, indent=2)
+            
+            console.print(f"\n💾 Guidance saved to: {save}", style="bold green")
+        
+    except Exception as e:
+        logger.error(f"Error generating assistance: {e}")
+        console.print(f"❌ Error generating assistance: {e}", style="bold red")
 
 
 if __name__ == "__main__":

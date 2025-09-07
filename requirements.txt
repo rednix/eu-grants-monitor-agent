@@ -1,33 +1,49 @@
-# Core dependencies
+# Core Framework
 masumi>=0.1.0
+
+# Web and HTTP
 requests>=2.31.0
 aiohttp>=3.8.0
+httpx>=0.24.0
 beautifulsoup4>=4.12.0
 scrapy>=2.10.0
+
+# API Server (Masumi Integration)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Data Processing
 pandas>=2.0.0
 numpy>=1.24.0
 pydantic>=2.0.0
+
+# Database
 sqlalchemy>=2.0.0
 alembic>=1.11.0
+psycopg2-binary>=2.9.0  # PostgreSQL
+# sqlite3 is built into Python
+
+# Scheduling and Tasks
 apscheduler>=3.10.0
-python-dotenv>=1.0.0
-pyyaml>=6.0
+tenacity>=8.2.0
+schedule>=1.2.0
+
+# CLI and UI
 click>=8.1.0
 rich>=13.0.0
+
+# Configuration and Logging
+python-dotenv>=1.0.0
+pyyaml>=6.0
 loguru>=0.7.0
-httpx>=0.24.0
-tenacity>=8.2.0
 
-# Email notifications
+# Document Processing
+pypdf2>=3.0.0
+
+# Email and Notifications
 email-validator>=2.0.0
-smtplib-ssl>=1.0.0
 
-# Database drivers
-psycopg2-binary>=2.9.0  # PostgreSQL
-sqlite3  # SQLite (built-in)
-
-# Additional utilities
+# Utilities
 python-dateutil>=2.8.0
 pytz>=2023.3
 cachetools>=5.3.0
-schedule>=1.2.0

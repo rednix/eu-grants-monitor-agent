@@ -1,0 +1,100 @@
+# Masumi Agent Configuration Template
+# Copy this to masumi_config.yaml and configure with your values
+
+# Masumi Registry Configuration
+masumi:
+  # API key for Masumi payment service (get from https://masumi.io)
+  payment_api_key: "your_masumi_api_key_here"
+  
+  # Payment service URL (usually https://api.masumi.io)
+  payment_service_url: "https://api.masumi.io"
+  
+  # Network to use for Cardano transactions
+  # Options: "Preprod" (testing) or "Mainnet" (production)
+  network: "Preprod"
+
+# Agent Configuration for Masumi Registry
+agent:
+  # Unique name for your agent (must be unique in the registry)
+  name: "eu-grants-monitor"
+  
+  # Description of your agent's capabilities
+  description: >
+    Intelligent monitoring and application assistance for EU grants and funding opportunities.
+    Specializes in identifying suitable opportunities for SMEs in the AI sector, providing
+    relevance analysis, complexity assessment, and complete application generation support.
+    Covers Horizon Europe, Digital Europe Programme, ERDF, and other major EU funding sources.
+  
+  # Tags describing your agent (used for discovery)
+  tags:
+    - "eu-funding"
+    - "grants" 
+    - "sme"
+    - "ai"
+    - "monitoring"
+    - "assistance"
+    - "horizon-europe"
+    - "digital-europe"
+    - "applications"
+    - "consulting"
+    - "startups"
+    - "innovation"
+    - "research"
+    - "development"
+  
+  # Base URL where your agent API is hosted
+  # This should be publicly accessible for Masumi to reach
+  api_base_url: "https://api.eu-grants-monitor.com"
+  
+  # Agent metadata
+  capability_name: "EU Grants Intelligence"
+  capability_version: "1.0.0"
+  
+  # Pricing configuration
+  pricing:
+    # Unit for pricing (typically "lovelace" for Cardano)
+    unit: "lovelace"
+    # Amount per request (1 ADA = 1,000,000 lovelace)
+    quantity: "2000000"  # 2 ADA per request
+
+# Author/Organization Information
+author:
+  name: "EU Grants Monitor Team"
+  contact: "contact@eu-grants-monitor.com"
+  organization: "EU Grants Monitor"
+
+# Legal Information (URLs to your policies)
+legal:
+  privacy_policy: "https://eu-grants-monitor.com/privacy"
+  terms_of_service: "https://eu-grants-monitor.com/terms"
+  other_legal: "https://eu-grants-monitor.com/legal"
+
+# Example outputs (samples of what your agent produces)
+examples:
+  - name: "EU Grants List"
+    description: "Filtered list of relevant EU funding opportunities"
+    mime_type: "application/json"
+    sample_url: "https://api.eu-grants-monitor.com/examples/grants-list.json"
+  
+  - name: "Application Guidance"
+    description: "Detailed guidance for grant applications"
+    mime_type: "application/pdf" 
+    sample_url: "https://api.eu-grants-monitor.com/examples/guidance.pdf"
+  
+  - name: "Generated Application Forms"
+    description: "Pre-filled application documents"
+    mime_type: "application/zip"
+    sample_url: "https://api.eu-grants-monitor.com/examples/forms.zip"
+
+# Deployment Environment Settings
+environment:
+  # Environment type: development, staging, production
+  type: "production"
+  
+  # API server configuration
+  api:
+    host: "0.0.0.0"
+    port: 8000
+    
+  # Logging level for the agent
+  log_level: "INFO"

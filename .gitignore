@@ -111,6 +111,9 @@ dmypy.json
 *~
 
 # Project specific
+config/config.yaml
+config/business_profile.yaml
+config/masumi_config.yaml
 config/secrets.yaml
 config/api_keys.yaml
 data/*.json
@@ -118,6 +121,12 @@ data/*.csv
 logs/*.log
 *.db
 *.sqlite
+
+# Generated applications and temp files
+generated_applications/
+data/scraped_*
+.masumi_cache/
+wallet_keys/
 
 # OS generated files
 .DS_Store
@@ -127,3 +136,25 @@ logs/*.log
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Frontend (Next.js/React)
+webapp/frontend/.next/
+webapp/frontend/.vercel
+webapp/frontend/out/
+webapp/frontend/build/
+webapp/frontend/dist/
+webapp/frontend/.env.local
+webapp/frontend/.env.production
+webapp/frontend/.env.staging
+webapp/frontend/npm-debug.log*
+webapp/frontend/yarn-debug.log*
+webapp/frontend/yarn-error.log*
+
+# Backend (FastAPI/Python)
+webapp/backend/.env
+webapp/backend/.env.local
+webapp/backend/.env.production
+webapp/backend/.env.staging
+webapp/backend/app.db
+webapp/backend/migrations/versions/
+webapp/backend/alembic.ini

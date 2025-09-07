@@ -1,0 +1,33 @@
+# FastAPI and server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0  # Synchronous PostgreSQL driver
+asyncpg>=0.28.0        # Async PostgreSQL driver (required for Supabase async)
+alembic>=1.11.0
+
+# Supabase (optional - for additional features)
+supabase>=1.0.4
+
+# Authentication and Security
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+httpx>=0.24.0
+
+# Payment processing
+stripe>=6.5.0
+
+# Data validation
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Environment and configuration
+python-dotenv>=1.0.0
+
+# Development dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.7.0
+isort>=5.12.0
