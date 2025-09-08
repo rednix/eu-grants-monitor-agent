@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Grant, User, GrantFilters, PaginatedResponse, ApiResponse } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://grant-monitor-production.up.railway.app';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -38,38 +38,105 @@ api.interceptors.response.use(
 export const grantsApi = {
   // Get grants with optional filters
   getGrants: async (filters: GrantFilters = {}, page = 1, perPage = 20): Promise<PaginatedResponse<Grant>> => {
-    const params = new URLSearchParams();
-    
-    // Map frontend filters to simple API parameters
-    if (filters.search) {
-      params.append('query', filters.search);
+    try {
+      const params = new URLSearchParams();
+      
+      // Map frontend filters to simple API parameters
+      if (filters.search) {
+        params.append('query', filters.search);
+      }
+      if (filters.program) {
+        params.append('program', filters.program);
+      }
+      if (filters.min_amount) {
+        params.append('min_amount', filters.min_amount.toString());
+      }
+      if (filters.max_amount) {
+        params.append('max_amount', filters.max_amount.toString());
+      }
+      if (filters.technology_areas && filters.technology_areas.length > 0) {
+        params.append('technology_areas', filters.technology_areas.join(','));
+      }
+      
+      params.append('page', page.toString());
+      params.append('limit', perPage.toString());
+      
+      const response = await api.get(`/api/grants/simple?${params.toString()}`);
+      
+      // Transform simple API response to match frontend expectations
+      return {
+        data: response.data.grants,
+        total: response.data.total_count,
+        page: response.data.page,
+        per_page: response.data.limit,
+        total_pages: response.data.total_pages
+      };
+    } catch (error) {
+      // Fallback to local grants data when backend is unavailable
+      console.warn('Backend unavailable, using fallback grants data:', error);
+      
+      try {
+        const fallbackResponse = await fetch('/grants.json');
+        const fallbackData = await fallbackResponse.json();
+        
+        // Apply basic filtering to fallback data
+        let filteredGrants = fallbackData.grants;
+        
+        if (filters.search) {
+          const searchTerm = filters.search.toLowerCase();
+          filteredGrants = filteredGrants.filter((grant: any) => 
+            grant.title.toLowerCase().includes(searchTerm) ||
+            grant.description.toLowerCase().includes(searchTerm) ||
+            grant.synopsis?.toLowerCase().includes(searchTerm)
+          );
+        }
+        
+        if (filters.program) {
+          filteredGrants = filteredGrants.filter((grant: any) => 
+            grant.program.toLowerCase().includes(filters.program!.toLowerCase())
+          );
+        }
+        
+        if (filters.min_amount) {
+          filteredGrants = filteredGrants.filter((grant: any) => 
+            (grant.min_funding_amount || 0) >= filters.min_amount!
+          );
+        }
+        
+        if (filters.max_amount) {
+          filteredGrants = filteredGrants.filter((grant: any) => 
+            (grant.max_funding_amount || Infinity) <= filters.max_amount!
+          );
+        }
+        
+        if (filters.technology_areas && filters.technology_areas.length > 0) {
+          filteredGrants = filteredGrants.filter((grant: any) => 
+            filters.technology_areas!.some(area => 
+              grant.technology_areas.some((grantArea: string) => 
+                grantArea.toLowerCase().includes(area.toLowerCase())
+              )
+            )
+          );
+        }
+        
+        // Apply pagination
+        const startIndex = (page - 1) * perPage;
+        const endIndex = startIndex + perPage;
+        const paginatedGrants = filteredGrants.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(filteredGrants.length / perPage);
+        
+        return {
+          data: paginatedGrants,
+          total: filteredGrants.length,
+          page: page,
+          per_page: perPage,
+          total_pages: totalPages
+        };
+      } catch (fallbackError) {
+        console.error('Fallback data also failed:', fallbackError);
+        throw new Error('Both backend and fallback data are unavailable');
+      }
     }
-    if (filters.program) {
-      params.append('program', filters.program);
-    }
-    if (filters.min_amount) {
-      params.append('min_amount', filters.min_amount.toString());
-    }
-    if (filters.max_amount) {
-      params.append('max_amount', filters.max_amount.toString());
-    }
-    if (filters.technology_areas && filters.technology_areas.length > 0) {
-      params.append('technology_areas', filters.technology_areas.join(','));
-    }
-    
-    params.append('page', page.toString());
-    params.append('limit', perPage.toString());
-    
-    const response = await api.get(`/api/grants/simple?${params.toString()}`);
-    
-    // Transform simple API response to match frontend expectations
-    return {
-      data: response.data.grants,
-      total: response.data.total_count,
-      page: response.data.page,
-      per_page: response.data.limit,
-      total_pages: response.data.total_pages
-    };
   },
 
   // Get single grant by ID
