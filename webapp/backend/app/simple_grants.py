@@ -56,17 +56,31 @@ SessionLocal = None
 
 def get_database_url():
     """Get database URL from environment variables."""
-    # Try to import from main config first
-    try:
-        from .config import settings
-        return settings.DATABASE_URL
-    except ImportError:
-        pass
-    
-    # Fallback to environment variables
+    # First check environment variables for Supabase
     database_url = os.getenv("SUPABASE_DATABASE_URL") or os.getenv("DATABASE_URL")
+    
+    # If no environment variable, try to import from main config
     if not database_url:
-        raise ValueError("No database URL found in environment variables")
+        try:
+            from .config import settings
+            database_url = settings.DATABASE_URL
+        except ImportError:
+            pass
+    
+    # If still no database URL, provide a helpful error
+    if not database_url:
+        raise ValueError(
+            "No database URL found in environment variables. "
+            "Please set SUPABASE_DATABASE_URL or DATABASE_URL environment variable."
+        )
+    
+    # Make sure we're not defaulting to localhost
+    if "localhost" in database_url or "127.0.0.1" in database_url:
+        raise ValueError(
+            f"Invalid database URL pointing to localhost: {database_url}. "
+            "This should point to your Supabase database."
+        )
+    
     return database_url
 
 def initialize_database():
