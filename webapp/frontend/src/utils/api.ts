@@ -40,21 +40,36 @@ export const grantsApi = {
   getGrants: async (filters: GrantFilters = {}, page = 1, perPage = 20): Promise<PaginatedResponse<Grant>> => {
     const params = new URLSearchParams();
     
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        if (Array.isArray(value)) {
-          params.append(key, value.join(','));
-        } else {
-          params.append(key, value.toString());
-        }
-      }
-    });
+    // Map frontend filters to simple API parameters
+    if (filters.search) {
+      params.append('query', filters.search);
+    }
+    if (filters.program) {
+      params.append('program', filters.program);
+    }
+    if (filters.min_amount) {
+      params.append('min_amount', filters.min_amount.toString());
+    }
+    if (filters.max_amount) {
+      params.append('max_amount', filters.max_amount.toString());
+    }
+    if (filters.technology_areas && filters.technology_areas.length > 0) {
+      params.append('technology_areas', filters.technology_areas.join(','));
+    }
     
     params.append('page', page.toString());
-    params.append('per_page', perPage.toString());
+    params.append('limit', perPage.toString());
     
-    const response = await api.get(`/api/grants?${params.toString()}`);
-    return response.data;
+    const response = await api.get(`/api/grants/simple?${params.toString()}`);
+    
+    // Transform simple API response to match frontend expectations
+    return {
+      data: response.data.grants,
+      total: response.data.total_count,
+      page: response.data.page,
+      per_page: response.data.limit,
+      total_pages: response.data.total_pages
+    };
   },
 
   // Get single grant by ID

@@ -24,6 +24,7 @@ from .analyzers.opportunity_analyzer import OpportunityAnalyzer
 from .matchers.profile_matcher import ProfileMatcher
 from .notifiers.email_notifier import EmailNotifier
 from .assistants.application_assistant import ApplicationAssistant
+from .services.database import DatabaseService
 from .data.mock_grants import get_grant_by_id, get_mock_grants
 
 console = Console()
@@ -50,6 +51,7 @@ class GrantsMonitorAgent:
         self.matcher = ProfileMatcher(self.config.get('matching', {}))
         self.notifier = EmailNotifier(self.config.get('notifications', {}))
         self.assistant = ApplicationAssistant(self.config.get('assistance', {}))
+        self.database = DatabaseService(self.config)
         
         # Load business profile
         self.business_profile = self._load_business_profile()
@@ -158,6 +160,36 @@ class GrantsMonitorAgent:
         else:
             logger.info("No high-priority grants found for alerts")
     
+    async def store_results(self, grants: List[Grant]) -> None:
+        """Store monitoring results in the database.
+        
+        Args:
+            grants: List of analyzed grants to store
+        """
+        if not grants:
+            logger.info("No grants to store")
+            return
+        
+        try:
+            logger.info(f"Storing {len(grants)} grants to database...")
+            self.database.store_grants(grants)
+            
+            # Store monitoring session data
+            session_data = {
+                'grants_processed': len(grants),
+                'high_priority_count': len([g for g in grants if g.priority_score >= 70]),
+                'avg_relevance_score': sum(g.relevance_score for g in grants) / len(grants),
+                'avg_complexity_score': sum(g.complexity_score for g in grants) / len(grants),
+                'timestamp': datetime.now().isoformat()
+            }
+            session_id = self.database.store_monitoring_session(session_data)
+            logger.info(f"Stored monitoring session: {session_id}")
+            
+        except Exception as e:
+            logger.error(f"Error storing results: {e}")
+            # Don't raise the exception to avoid breaking the monitoring cycle
+            # but log it for debugging
+    
     async def run_monitoring_cycle(self) -> None:
         """Execute a complete monitoring cycle."""
         try:
@@ -170,8 +202,8 @@ class GrantsMonitorAgent:
             # Send alerts for high-priority items
             await self.send_alerts(analyzed_grants)
             
-            # Store results (implement database storage)
-            # await self.store_results(analyzed_grants)
+            # Store results in database
+            await self.store_results(analyzed_grants)
             
             logger.info("Monitoring cycle completed successfully")
             

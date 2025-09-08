@@ -69,6 +69,7 @@ class User(Base):
     profile_picture_url = Column(String(500))
     
     # Authentication
+    hashed_password = Column(String(255), nullable=True)  # For email/password auth
     google_id = Column(String(255), unique=True, nullable=True, index=True)
     microsoft_id = Column(String(255), unique=True, nullable=True, index=True)
     is_active = Column(Boolean, default=True)

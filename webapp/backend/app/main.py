@@ -20,7 +20,9 @@ from pathlib import Path
 from .database import engine, get_db, create_tables
 from .models import Base
 from .auth import router as auth_router, get_current_user
+from .oauth_callbacks import router as oauth_router
 from .grants import router as grants_router
+from .simple_grants import router as simple_grants_router
 from .payments import router as payments_router
 from .users import router as users_router
 from .ai_assistant import router as ai_assistant_router
@@ -32,6 +34,34 @@ async def lifespan(app: FastAPI):
     """Handle application startup and shutdown."""
     # Startup
     print("🚀 Starting EU Grants Monitor Web Platform...")
+    
+    # Run database migration for hashed_password column
+    try:
+        from .database import SessionLocal
+        from sqlalchemy import text
+        
+        with SessionLocal() as db:
+            # Check if column exists
+            result = db.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'users' AND column_name = 'hashed_password'
+            """))
+            
+            if result.fetchone():
+                print("✅ hashed_password column already exists")
+            else:
+                # Add the column
+                db.execute(text("""
+                    ALTER TABLE users 
+                    ADD COLUMN hashed_password VARCHAR(255) NULL
+                """))
+                db.commit()
+                print("✅ Successfully added hashed_password column")
+        
+        print("✅ Database migration completed")
+    except Exception as e:
+        print(f"⚠️ Database migration failed: {e}")
     
     # Create database tables - Disabled since tables already exist via Supabase
     # await create_tables()
@@ -78,8 +108,10 @@ security = HTTPBearer()
 
 # Include routers
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(oauth_router, prefix="/api/auth", tags=["OAuth"])
 app.include_router(users_router, prefix="/api/users", tags=["Users"])
-app.include_router(grants_router, prefix="/api/grants", tags=["Grants"])
+# app.include_router(grants_router, prefix="/api/grants", tags=["Grants"])  # Disabled due to route conflict
+app.include_router(simple_grants_router, prefix="/api/grants", tags=["Grants - Simple"])
 app.include_router(payments_router, prefix="/api/payments", tags=["Payments"])
 app.include_router(ai_assistant_router, prefix="/api/ai-assistant", tags=["AI Assistant"])
 

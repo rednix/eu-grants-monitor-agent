@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     SUPABASE_URL: Optional[str] = os.getenv("SUPABASE_URL")
     SUPABASE_ANON_KEY: Optional[str] = os.getenv("SUPABASE_ANON_KEY")
     SUPABASE_SERVICE_ROLE_KEY: Optional[str] = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    PROJECT_REF: Optional[str] = os.getenv("PROJECT_REF")
     
     # Security
     SECRET_KEY: str = os.getenv(
@@ -41,28 +42,25 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",  # React dev server
         "http://localhost:3001",
+        "https://frontend-3yx2epjnp-nicos-projects-bbdc04b5.vercel.app",  # Vercel frontend
         "https://grants.yourdomain.com",
         "https://yourdomain.com"
     ]
-    ALLOWED_HOSTS: List[str] = ["*"] if DEBUG else [
-        "localhost",
-        "grants.yourdomain.com",
-        "yourdomain.com"
-    ]
+    ALLOWED_HOSTS: List[str] = ["*"]
     
     # OAuth Settings
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
     GOOGLE_REDIRECT_URI: str = os.getenv(
         "GOOGLE_REDIRECT_URI", 
-        "http://localhost:8000/api/auth/google/callback"
+        "https://grant-monitor-production.up.railway.app/api/auth/google/callback"
     )
     
     MICROSOFT_CLIENT_ID: str = os.getenv("MICROSOFT_CLIENT_ID", "")
     MICROSOFT_CLIENT_SECRET: str = os.getenv("MICROSOFT_CLIENT_SECRET", "")
     MICROSOFT_REDIRECT_URI: str = os.getenv(
         "MICROSOFT_REDIRECT_URI",
-        "http://localhost:8000/api/auth/microsoft/callback"
+        "https://grant-monitor-production.up.railway.app/api/auth/microsoft/callback"
     )
     
     # Stripe Payment Settings

@@ -11,6 +11,7 @@ from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr
 import httpx
 import uuid
+from passlib.context import CryptContext
 
 from .database import get_db
 from .models import User, Company, UserRole, SubscriptionStatus, CompanySize
@@ -18,6 +19,9 @@ from .config import settings
 
 router = APIRouter()
 security = HTTPBearer()
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class TokenResponse(BaseModel):
@@ -32,9 +36,16 @@ class UserCreate(BaseModel):
     """User creation model."""
     email: EmailStr
     full_name: str
+    password: Optional[str] = None  # For email/password signup
     google_id: Optional[str] = None
     microsoft_id: Optional[str] = None
     profile_picture_url: Optional[str] = None
+
+
+class UserLogin(BaseModel):
+    """User login model."""
+    email: EmailStr
+    password: str
 
 
 class CompanyCreate(BaseModel):
@@ -45,6 +56,28 @@ class CompanyCreate(BaseModel):
     industry: Optional[str] = None
     website: Optional[str] = None
     description: Optional[str] = None
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash."""
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password: str) -> str:
+    """Hash a password."""
+    return pwd_context.hash(password)
+
+
+def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
+    """Authenticate a user by email and password."""
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        return None
+    if not user.hashed_password:
+        return None  # OAuth-only user
+    if not verify_password(password, user.hashed_password):
+        return None
+    return user
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -240,6 +273,95 @@ async def login_microsoft(request: Request, db: Session = Depends(get_db)):
     
     # Create or update user
     user = create_or_update_user(user_info, "microsoft", db)
+    
+    # Create JWT token
+    token_data = {"sub": user.id}
+    token = create_access_token(token_data)
+    
+    return TokenResponse(
+        access_token=token,
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user={
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "profile_picture_url": user.profile_picture_url,
+            "role": user.role,
+            "subscription_status": user.subscription_status,
+            "has_company": user.company_id is not None
+        }
+    )
+
+
+@router.post("/signup", response_model=TokenResponse)
+async def signup(user_data: UserCreate, db: Session = Depends(get_db)):
+    """Create a new user account."""
+    # Check if user already exists
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="User with this email already exists"
+        )
+    
+    if not user_data.password:
+        raise HTTPException(
+            status_code=400,
+            detail="Password is required for signup"
+        )
+    
+    # Create new user
+    hashed_password = get_password_hash(user_data.password)
+    user = User(
+        email=user_data.email,
+        full_name=user_data.full_name,
+        hashed_password=hashed_password,
+        role=UserRole.USER,
+        subscription_status=SubscriptionStatus.FREE,
+        email_verified=False,  # Can be verified via email later
+        is_active=True
+    )
+    
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    # Create JWT token
+    token_data = {"sub": user.id}
+    token = create_access_token(token_data)
+    
+    return TokenResponse(
+        access_token=token,
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user={
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "profile_picture_url": user.profile_picture_url,
+            "role": user.role,
+            "subscription_status": user.subscription_status,
+            "has_company": user.company_id is not None
+        }
+    )
+
+
+@router.post("/login", response_model=TokenResponse)
+async def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
+    """Authenticate user with email and password."""
+    user = authenticate_user(db, user_credentials.email, user_credentials.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    
+    # Update last login
+    user.last_login = datetime.utcnow()
+    db.commit()
     
     # Create JWT token
     token_data = {"sub": user.id}

@@ -4,22 +4,7 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "outputDirectory": ".next",
-  "public": false,
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@next-public-api-url",
-    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "@next-public-stripe-publishable-key"
-  },
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_API_URL": "@next-public-api-url",
-      "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "@next-public-stripe-publishable-key"
-    }
-  },
-  "functions": {
-    "pages/api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
+  "public": true,
   "headers": [
     {
       "source": "/(.*)",
@@ -42,7 +27,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-backend-domain.com/api/:path*"
+      "destination": "https://grant-monitor-production.up.railway.app/api/:path*"
     }
   ]
 }
